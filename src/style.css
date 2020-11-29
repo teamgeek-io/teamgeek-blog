@@ -291,6 +291,12 @@ a:focus {
 .bio {
   display: flex;
   margin-bottom: var(--spacing-16);
+  align-items: center;
+}
+
+.bio-name {
+  font-weight: var(--fontWeight-bold);
+  font-family: var(--font-heading);
 }
 
 .bio p {

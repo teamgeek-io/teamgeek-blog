@@ -31,7 +31,9 @@ const BlogPostTemplate = ({ data, location }) => {
         />
         <hr />
         <footer>
-          <Bio />
+          {post.frontmatter.authors
+            ? post.frontmatter.authors.map(author => <Bio author={author} />)
+            : null}
         </footer>
       </article>
       <nav className="blog-post-nav">
@@ -85,6 +87,22 @@ export const pageQuery = graphql`
         title
         date(formatString: "MMMM DD, YYYY")
         description
+        authors {
+          id
+          html
+          featured {
+            childImageSharp {
+              fixed(width: 50, height: 50, quality: 95) {
+                ...GatsbyImageSharpFixed
+              }
+            }
+          }
+          frontmatter {
+            name
+            twitter
+            instagram
+          }
+        }
       }
     }
     previous: markdownRemark(id: { eq: $previousPostId }) {

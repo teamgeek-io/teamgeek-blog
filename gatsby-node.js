@@ -11,14 +11,24 @@ exports.createPages = async ({ graphql, actions, reporter }) => {
   const result = await graphql(
     `
       {
-        allMarkdownRemark(
-          sort: { fields: [frontmatter___date], order: ASC }
+        allFile(
+          sort: {
+            fields: [childMarkdownRemark___frontmatter___date]
+            order: ASC
+          }
           limit: 1000
+          filter: {
+            sourceInstanceName: { eq: "blog" }
+            extension: { eq: "md" }
+          }
         ) {
           nodes {
             id
-            fields {
-              slug
+            childMarkdownRemark {
+              id
+              fields {
+                slug
+              }
             }
           }
         }
@@ -34,14 +44,14 @@ exports.createPages = async ({ graphql, actions, reporter }) => {
     return
   }
 
-  const posts = result.data.allMarkdownRemark.nodes
+  const posts = result.data.allFile.nodes
 
   // Create blog posts pages
   // But only if there's at least one markdown file found at "content/blog" (defined in gatsby-config.js)
   // `context` is available in the template as a prop and as a variable in GraphQL
 
   if (posts.length > 0) {
-    posts.forEach((post, index) => {
+    posts.forEach(({ childMarkdownRemark: post }, index) => {
       const previousPostId = index === 0 ? null : posts[index - 1].id
       const nextPostId = index === posts.length - 1 ? null : posts[index + 1].id
 
@@ -73,10 +83,42 @@ exports.onCreateNode = ({ node, actions, getNode }) => {
 }
 
 exports.createSchemaCustomization = ({ actions }) => {
-  const { createTypes } = actions
+  const { createTypes, createFieldExtension } = actions
 
   // Explicitly define the siteMetadata {} object
   // This way those will always be defined even if removed from gatsby-config.js
+
+  createFieldExtension({
+    name: "fileByDataPath",
+    extend: () => ({
+      resolve: function (src, args, context, info) {
+        const split = src.fileAbsolutePath.split("/")
+        const path = split.slice(0, split.length - 1).join("/") + "/profile.jpg"
+
+        if (!path) {
+          return null
+        }
+
+        const fileNode = context.nodeModel.runQuery({
+          firstOnly: true,
+          type: "File",
+          query: {
+            filter: {
+              absolutePath: {
+                eq: path,
+              },
+            },
+          },
+        })
+
+        if (!fileNode) {
+          return null
+        }
+
+        return fileNode
+      },
+    }),
+  })
 
   // Also explicitly define the Markdown frontmatter
   // This way the "MarkdownRemark" queries will return `null` even when no
@@ -100,6 +142,7 @@ exports.createSchemaCustomization = ({ actions }) => {
     type MarkdownRemark implements Node {
       frontmatter: Frontmatter
       fields: Fields
+      featured: File @fileByDataPath
     }
 
     type Frontmatter {
